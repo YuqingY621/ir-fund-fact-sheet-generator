@@ -239,29 +239,80 @@ def _draw_footer(canv, page_number: int, language: str):
     canv.drawRightString(page_w - 10 * mm, 7.5 * mm, t("page", language, page=page_number))
 
 
-def _line_chart_image(growth: pd.DataFrame, language: str, width=119 * mm, height=43 * mm) -> Image:
+def _line_chart_image(
+    growth: pd.DataFrame,
+    language: str,
+    width=119 * mm,
+    height=43 * mm,
+) -> Image:
     fig, ax = plt.subplots(figsize=(6.7, 2.65))
+
     zh_font = None
+
     if language == "zh":
-        try:
-            zh_font = font_manager.FontProperties(fname="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
-        except Exception:
-            zh_font = None
-    ax.plot(growth["Date"], growth["Fund_Growth"], label=t("fund", language), linewidth=1.5, color="#303030")
-    ax.plot(growth["Date"], growth["Benchmark_Growth"], label=t("benchmark", language), linewidth=1.35, color="#B7B7B7")
+        font_candidates = [
+            r"C:\Windows\Fonts\msyh.ttc",
+            r"C:\Windows\Fonts\simhei.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/System/Library/Fonts/PingFang.ttc",
+        ]
+
+        for font_path in font_candidates:
+            try:
+                if __import__("pathlib").Path(font_path).exists():
+                    zh_font = font_manager.FontProperties(fname=font_path)
+                    break
+            except Exception:
+                continue
+
+    ax.plot(
+        growth["Date"],
+        growth["Fund_Growth"],
+        label=t("fund", language),
+        linewidth=1.5,
+        color="#303030",
+    )
+
+    ax.plot(
+        growth["Date"],
+        growth["Benchmark_Growth"],
+        label=t("benchmark", language),
+        linewidth=1.35,
+        color="#B7B7B7",
+    )
+
     ax.grid(True, axis="y", alpha=0.35, linewidth=0.6)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.tick_params(axis="both", labelsize=7)
-    legend_kwargs = dict(frameon=False, fontsize=7, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.17))
+
+    legend_kwargs = dict(
+        frameon=False,
+        fontsize=7,
+        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.17),
+    )
+
     if zh_font is not None:
         legend_kwargs["prop"] = zh_font
+
     ax.legend(**legend_kwargs)
+
     fig.tight_layout(pad=0.7)
+
     out = BytesIO()
-    fig.savefig(out, format="png", dpi=185, bbox_inches="tight", facecolor="white")
+    fig.savefig(
+        out,
+        format="png",
+        dpi=185,
+        bbox_inches="tight",
+        facecolor="white",
+    )
+
     plt.close(fig)
     out.seek(0)
+
     return Image(out, width=width, height=height)
 
 
