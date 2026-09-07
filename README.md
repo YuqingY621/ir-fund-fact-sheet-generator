@@ -6,6 +6,14 @@ The application calculates performance, risk and portfolio analytics, lets users
 
 > All data in this repository is synthetic. The project is designed as a portfolio demonstration, not as investment advice or a production reporting system.
 
+## 中文简介
+
+这是一个基于 Python 开发的本地 Investor Relations（投资者关系）报告自动化工具，可将结构化的 Excel 基金数据自动转换为标准化的基金 Fact Sheet。
+
+该工具可自动完成基金业绩、风险指标及投资组合数据分析，并允许用户自主选择需要展示的指标和报告内容。同时支持中英文输出、自定义 Logo，以及生成可直接用于展示或分发的 PDF 和可进一步编辑的 PowerPoint 文件。
+
+> 本项目中的所有数据均为合成演示数据，仅用于个人作品集及技术展示，不构成任何投资建议，也不代表可直接用于实际业务的生产级报告系统。
+> 
 ![Example fact sheet](docs/example_fact_sheet_page1.png)
 
 ## Why I built this
