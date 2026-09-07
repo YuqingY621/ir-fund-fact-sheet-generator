@@ -62,18 +62,79 @@ def load_uploaded_workbook(uploaded):
     finally:
         path.unlink(missing_ok=True)
 
+UI_ZH = {
+    # Section titles
+    "Performance Content": "业绩表现",
+    "Risk Metrics": "风险指标",
+    "Portfolio Content": "投资组合",
 
-def checkbox_group(title, definitions):
-    st.markdown(f"#### {title}")
+    # Performance
+    "custom_net_performance": "区间净收益",
+    "standard_performance_table": "标准业绩表现",
+    "calendar_year_returns": "年度业绩表现",
+    "growth_of_10000": "初始投资增长",
+
+    # Risk
+    "annualized_volatility": "年化波动率",
+    "sharpe_ratio": "夏普比率",
+    "maximum_drawdown": "最大回撤",
+    "beta": "Beta",
+    "tracking_error": "跟踪误差",
+    "information_ratio": "信息比率",
+
+    # Portfolio
+    "top_holdings": "主要持仓",
+    "sector_allocation": "行业配置",
+    "country_allocation": "国家/地区配置",
+    "asset_class_allocation": "资产类别配置",
+    "top_10_concentration": "前十大持仓集中度",
+    "cash_weight": "现金占比",
+    "number_of_holdings": "持仓数量",
+
+    # Input labels
+    "Performance start date": "业绩起始日期",
+    "Performance end date": "业绩结束日期",
+    "Risk measurement period": "风险测算区间",
+    "Annual risk-free rate (%)": "年化无风险利率（%）",
+    "Number of top holdings": "主要持仓数量",
+
+    "Sector Allocation": "行业配置",
+    "Country Allocation": "国家/地区配置",
+    "Asset-Class Allocation": "资产类别配置",
+    "Top Holdings": "主要持仓",
+}
+
+RISK_PERIOD_ZH = {
+    "1Y": "1年",
+    "3Y": "3年",
+    "5Y": "5年",
+    "Since Inception": "成立以来",
+    "Custom": "自定义",
+}
+
+def ui_label(text, language):
+    return UI_ZH.get(text, text) if language == "zh" else text
+
+def checkbox_group(title, definitions, language="en"):
+    display_title = UI_ZH.get(title, title) if language == "zh" else title
+    st.markdown(f"#### {display_title}")
+
     selected = []
+
     for metric in definitions:
+        if language == "zh":
+            display_label = UI_ZH.get(metric.metric_id, metric.label)
+        else:
+            display_label = metric.label
+
         if st.checkbox(
-            metric.label,
+            display_label,
             value=metric.default_selected,
             key=f"{metric.category}_{metric.metric_id}",
             help=metric.description or None,
         ):
             selected.append(metric.metric_id)
+
     return selected
 
 
@@ -161,7 +222,7 @@ def render_preview(factsheet, language="en"):
             display = top[[c for c in ["Rank", "Security_Name", "Sector", "Country", "Weight"] if c in top.columns]].copy()
             display["Weight"] = display["Weight"].map(fmt_pct)
             display = display.rename(columns={"Security_Name": "Security"})
-            st.markdown("**主要持仓**" if language == "zh" else "**Top Holdings**")
+            st.markdown(f"**{ui_label('Top Holdings', report_language)}**")
             st.dataframe(display, hide_index=True, use_container_width=True)
 
         for key, category, title in [
@@ -171,7 +232,7 @@ def render_preview(factsheet, language="en"):
         ]:
             allocation = portfolio.get(key)
             if allocation is not None:
-                st.markdown(f"**{title}**")
+                st.markdown(f"**{ui_label(title, report_language)}**")
                 st.bar_chart(allocation[[category, "Weight"]].set_index(category), use_container_width=True)
 
 
@@ -204,7 +265,7 @@ with st.sidebar:
     if report_language == "zh":
         st.caption("Standard financial labels use a fixed Chinese dictionary. An OpenRouter key is optional and is only used for narrative text not covered by the demo dictionary.")
         openrouter_api_key = st.text_input("OpenRouter API key (optional)", type="password") or None
-        openrouter_model = st.text_input("OpenRouter model ID (optional)", value="openai/gpt-4.1-mini") or None
+        openrouter_model = st.text_input("OpenRouter model ID (optional)", value="openai/gpt-5.6-luna") or None
 
 try:
     if source_mode == "Use demo workbook":
@@ -247,20 +308,38 @@ with st.sidebar:
 
 c1, c2, c3 = st.columns(3)
 with c1:
-    selected_performance = checkbox_group("Performance Content", PERFORMANCE_METRICS)
+    selected_performance = checkbox_group(
+    "Performance Content",
+    PERFORMANCE_METRICS,
+    report_language,
+)
     performance_start = min_date
     performance_end = reporting_date
     if "custom_net_performance" in selected_performance:
         performance_start = pd.Timestamp(st.date_input(
-            "Performance start date", min_date.date(), min_value=min_date.date(), max_value=reporting_date.date()
+            ui_label("Performance start date", report_language), min_date.date(), min_value=min_date.date(), max_value=reporting_date.date()
         ))
         performance_end = pd.Timestamp(st.date_input(
-            "Performance end date", reporting_date.date(), min_value=performance_start.date(), max_value=reporting_date.date()
+            ui_label("Performance end date", report_language), reporting_date.date(), min_value=performance_start.date(), max_value=reporting_date.date()
         ))
 
 with c2:
-    selected_risk = checkbox_group("Risk Metrics", RISK_METRICS)
-    risk_period = st.selectbox("Risk measurement period", ["1Y", "3Y", "5Y", "Since Inception", "Custom"], index=1)
+    selected_risk = checkbox_group(
+    "Risk Metrics",
+    RISK_METRICS,
+    report_language,
+)
+
+    
+
+    risk_period = st.selectbox(
+    ui_label("Risk measurement period", report_language),
+    ["1Y", "3Y", "5Y", "Since Inception", "Custom"],
+    format_func=lambda x: RISK_PERIOD_ZH.get(x, x)
+    if report_language == "zh"
+    else x,
+    )
+
     risk_start = None
     risk_end = reporting_date
     if risk_period == "Custom":
@@ -273,13 +352,17 @@ with c2:
     risk_free_rate = 0.0
     if "sharpe_ratio" in selected_risk:
         risk_free_rate = st.number_input(
-            "Annual risk-free rate (%)", min_value=-5.0, max_value=25.0, value=2.5, step=0.1
+            ui_label("Annual risk-free rate (%)", report_language), min_value=-5.0, max_value=25.0, value=2.5, step=0.1
         ) / 100.0
 
 with c3:
-    selected_portfolio = checkbox_group("Portfolio Content", PORTFOLIO_METRICS)
+    selected_portfolio = checkbox_group(
+    "Portfolio Content",
+    PORTFOLIO_METRICS,
+    report_language,
+)
     top_n = st.number_input(
-        "Number of top holdings", min_value=3, max_value=20, value=10, step=1,
+        ui_label("Number of top holdings", report_language), min_value=3, max_value=20, value=10, step=1,
         disabled="top_holdings" not in selected_portfolio,
     )
 
@@ -305,48 +388,110 @@ except Exception as exc:
     st.stop()
 
 st.divider()
-preview_factsheet = localize_factsheet(factsheet, language=report_language, api_key=openrouter_api_key, model=openrouter_model)
+# Preview / localization
+try:
+    preview_factsheet = localize_factsheet(
+        factsheet,
+        language=report_language,
+        api_key=openrouter_api_key,
+        model=openrouter_model,
+    )
+except Exception as exc:
+    st.warning(
+        f"中文本地化失败，将使用原始内容继续显示：{exc}"
+        if report_language == "zh"
+        else f"Localization failed. Original content will be shown: {exc}"
+    )
+    preview_factsheet = factsheet
+
 render_preview(preview_factsheet, report_language)
 
 for warning in factsheet.get("warnings", []):
     st.warning(warning)
 
-pdf_bytes = generate_factsheet_pdf(
-    factsheet,
-    logo_bytes=logo_bytes,
-    language=report_language,
-    openrouter_api_key=openrouter_api_key,
-    openrouter_model=openrouter_model,
-)
-pptx_bytes = generate_factsheet_pptx(
-    factsheet,
-    logo_bytes=logo_bytes,
-    language=report_language,
-    openrouter_api_key=openrouter_api_key,
-    openrouter_model=openrouter_model,
-)
-safe_name = "_".join(str(factsheet["fund"].get("Fund_Name", "Fund")).split())
-lang_suffix = "ZH" if report_language == "zh" else "EN"
-pdf_filename = f"{safe_name}_{reporting_date.date()}_{lang_suffix}_Fact_Sheet.pdf"
-pptx_filename = f"{safe_name}_{reporting_date.date()}_{lang_suffix}_Fact_Sheet.pptx"
-d1, d2 = st.columns(2)
-with d1:
-    st.download_button(
-        "下载PDF" if report_language == "zh" else "Download PDF Fact Sheet",
-        data=pdf_bytes,
-        file_name=pdf_filename,
-        mime="application/pdf",
-        use_container_width=True,
+
+# Generate PDF
+pdf_bytes = None
+
+try:
+    pdf_bytes = generate_factsheet_pdf(
+        factsheet,
+        logo_bytes=logo_bytes,
+        language=report_language,
+        openrouter_api_key=openrouter_api_key,
+        openrouter_model=openrouter_model,
     )
-with d2:
-    st.download_button(
-        "下载可编辑PowerPoint" if report_language == "zh" else "Download Editable PowerPoint",
-        data=pptx_bytes,
-        file_name=pptx_filename,
-        mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        use_container_width=True,
+except Exception as exc:
+    st.error(
+        f"PDF 生成失败：{exc}"
+        if report_language == "zh"
+        else f"PDF generation failed: {exc}"
     )
 
+
+# Generate PowerPoint
+pptx_bytes = None
+
+try:
+    pptx_bytes = generate_factsheet_pptx(
+        factsheet,
+        logo_bytes=logo_bytes,
+        language=report_language,
+        openrouter_api_key=openrouter_api_key,
+        openrouter_model=openrouter_model,
+    )
+except Exception as exc:
+    st.error(
+        f"PowerPoint 生成失败：{exc}"
+        if report_language == "zh"
+        else f"PowerPoint generation failed: {exc}"
+    )
+
+
+# File names
+safe_name = "_".join(
+    str(factsheet["fund"].get("Fund_Name", "Fund")).split()
+)
+
+lang_suffix = "ZH" if report_language == "zh" else "EN"
+
+pdf_filename = (
+    f"{safe_name}_{reporting_date.date()}_{lang_suffix}_Fact_Sheet.pdf"
+)
+
+pptx_filename = (
+    f"{safe_name}_{reporting_date.date()}_{lang_suffix}_Fact_Sheet.pptx"
+)
+
+
+# Download buttons
+d1, d2 = st.columns(2)
+
+with d1:
+    if pdf_bytes is not None:
+        st.download_button(
+            "下载PDF" if report_language == "zh"
+            else "Download PDF Fact Sheet",
+            data=pdf_bytes,
+            file_name=pdf_filename,
+            mime="application/pdf",
+            use_container_width=True,
+        )
+
+with d2:
+    if pptx_bytes is not None:
+        st.download_button(
+            "下载可编辑PowerPoint" if report_language == "zh"
+            else "Download Editable PowerPoint",
+            data=pptx_bytes,
+            file_name=pptx_filename,
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True,
+        )
+
 st.caption(
+    "仅使用合成演示数据。实际生产环境应使用经管理人或相关数据负责人审核确认的 NAV、基准、持仓及合规数据。"
+    if report_language == "zh"
+    else
     "Synthetic demo data only. Production use should rely on administrator-approved NAV, benchmark, holdings and compliance data."
 )
