@@ -113,20 +113,20 @@ def load_fund_workbook(file_path: str | Path) -> dict[str, pd.DataFrame]:
     if not file_path.exists():
         raise FileNotFoundError(f"Workbook not found: {file_path}")
 
-    excel_file = pd.ExcelFile(file_path)
-    missing_sheets = set(REQUIRED_SHEETS) - set(excel_file.sheet_names)
-
-    if missing_sheets:
-        missing = ", ".join(sorted(missing_sheets))
-        raise ValueError(f"Missing required sheet(s): {missing}")
-
     data: dict[str, pd.DataFrame] = {}
 
-    for sheet_name in REQUIRED_SHEETS:
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-        df = _clean_columns(df)
-        df = _convert_types(sheet_name, df)
-        data[sheet_name] = df
+    with pd.ExcelFile(file_path) as excel_file:
+        missing_sheets = set(REQUIRED_SHEETS) - set(excel_file.sheet_names)
+
+        if missing_sheets:
+            missing = ", ".join(sorted(missing_sheets))
+            raise ValueError(f"Missing required sheet(s): {missing}")
+
+        for sheet_name in REQUIRED_SHEETS:
+            df = pd.read_excel(excel_file, sheet_name=sheet_name)
+            df = _clean_columns(df)
+            df = _convert_types(sheet_name, df)
+            data[sheet_name] = df
 
     return data
 
