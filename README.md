@@ -1,8 +1,8 @@
 # IR Fund Fact Sheet Generator
 
-A local Python prototype for automating a repetitive Investor Relations workflow in asset management.
+A local Python-based Investor Relations reporting tool that converts structured Excel fund data into standardized fund fact sheets.
 
-The application reads structured fund data from Excel, validates it, calculates performance and risk metrics, lets an IR user choose what should appear in the report, previews the result in a local Streamlit web app, and exports a branded PDF fact sheet.
+The application calculates performance, risk and portfolio analytics, lets users choose which metrics to display, supports English and Chinese output, accepts a custom logo, and exports either a distribution-ready PDF or a fully editable PowerPoint.
 
 > All data in this repository is synthetic. The project is designed as a portfolio demonstration, not as investment advice or a production reporting system.
 
@@ -19,17 +19,28 @@ This project demonstrates a workflow in which Excel remains the controlled input
 ```mermaid
 flowchart LR
     A[Local Excel Workbook] --> B[Data Validation]
+
     B --> C[Performance Engine]
     B --> D[Risk Engine]
     B --> E[Portfolio Analytics]
+
     C --> F[Fact Sheet Builder]
     D --> F
     E --> F
+
     G[IR User Selections] --> F
-    H[Optional JPG / PNG Logo] --> I[PDF Exporter]
-    F --> J[Streamlit Preview]
-    F --> I
-    I --> K[Investor-Ready PDF]
+
+    F --> H[Localization<br/>English / Chinese]
+    F --> I[Streamlit Preview]
+
+    H --> J[PDF Exporter]
+    H --> K[PPTX Exporter]
+
+    L[Optional JPG / PNG Logo] --> J
+    L --> K
+
+    J --> M[Investor-Ready PDF]
+    K --> N[Editable PowerPoint]
 ```
 
 ## Features
@@ -76,14 +87,21 @@ Risk periods can be 1Y, 3Y, 5Y, since inception or a custom date range. When Sha
 - Asset-class allocation
 - Cash weight
 
-### Branding and PDF export
+### Branding, localization and export
 
 - Upload a `.jpg`, `.jpeg` or `.png` logo in the web app
 - Logo is validated and normalized locally
 - Maximum upload size is 5 MB
 - Aspect ratio is preserved
 - The logo appears in the upper-right corner of page 1 only
-- PDF content follows the user's selected sections and metrics
+- Generate reports in English or Chinese
+- Standard financial terminology uses controlled translations
+- Narrative text can optionally be translated using an LLM through OpenRouter
+- Calculated figures, dates, fund identifiers and portfolio weights are not modified by the translation layer
+- Export a fixed-layout investor-ready PDF
+- Export a fully editable PowerPoint version
+- PowerPoint text boxes, tables, lines, charts and logo can be moved and edited manually
+- Both PDF and PowerPoint follow the user's selected sections and metrics
 
 ## Repository structure
 
