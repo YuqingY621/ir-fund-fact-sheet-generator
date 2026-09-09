@@ -241,11 +241,6 @@ python -m pytest -q
 
 The tests cover workbook validation, selected metric assembly, insufficient-history handling and PDF generation.
 
-## Interview summary
-
-A concise way to present the project:
-
-> I built a local Python prototype for automating an IR fund fact-sheet workflow. The system reads validated Excel data, calculates fund and benchmark performance, risk metrics and portfolio analytics, lets the IR user choose which metrics should appear, and produces a branded PDF. I kept calculation logic separate from the Streamlit interface and PDF layer so the preview and final report use the same numbers. For production use, I would connect it to administrator-approved data and compliance-controlled disclosures.
 
 ## License
 
