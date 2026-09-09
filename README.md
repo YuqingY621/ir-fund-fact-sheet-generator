@@ -1,20 +1,183 @@
 # IR Fund Fact Sheet Generator
 
+[中文说明](#中文说明) | [English Documentation](#english-documentation)
+
+## 中文说明
+
+这是一个基于 **Python + Streamlit** 开发的本地 Investor Relations（投资者关系）报告自动化工具，用于将结构化 Excel 基金数据转换为标准化的基金概览（Fund Fact Sheet）。
+
+工具可自动完成数据校验、基金业绩计算、风险指标计算和投资组合分析，并允许 IR 用户自主选择需要展示的指标和报告内容。同时支持中英文输出、自定义 Logo，以及生成可直接分发的 PDF 和可进一步编辑的 PowerPoint 文件。
+
+> 本项目中的所有数据均为合成演示数据，仅用于个人作品集及技术展示，不构成任何投资建议，也不代表可直接用于实际业务的生产级报告系统。
+
+![Example fact sheet](docs/example_fact_sheet_page1.png)
+
+## 为什么做这个项目
+
+在基金 IR 和定期报告工作中，底层数据通常已经存在于 Excel 或内部系统中，但不同基金、不同报告期仍需要重复完成数据检查、业绩表更新、风险指标计算、持仓分析、图表制作和报告排版。
+
+因此，我希望通过 Python 将这些重复步骤标准化和自动化，同时保留 IR 用户对最终展示内容的选择权。项目以 Excel 作为可控数据输入，由 Python 负责数据校验、计算和报告生成。
+
+## 核心工作流
+
+```mermaid
+flowchart LR
+    A[本地 Excel 数据] --> B[数据校验]
+
+    B --> C[业绩计算]
+    B --> D[风险指标计算]
+    B --> E[投资组合分析]
+
+    C --> F[Fact Sheet Builder]
+    D --> F
+    E --> F
+
+    G[IR 用户选择] --> F
+
+    F --> H[中英文处理]
+    F --> I[Streamlit 预览]
+
+    H --> J[PDF Exporter]
+    H --> K[PPTX Exporter]
+
+    L[可选 JPG / PNG Logo] --> J
+    L --> K
+
+    J --> M[可分发 PDF]
+    K --> N[可编辑 PowerPoint]
+```
+
+## 主要功能
+
+### 数据输入与控制
+
+- 使用内置 Demo Workbook，或上传本地 `.xlsx` 文件
+- 选择基金和报告日期
+- 校验必需工作表、字段、重复记录、Fund ID 和持仓权重
+- 上传数据仅在本地 Streamlit 会话中处理
+
+### 业绩分析
+
+用户可以选择需要展示在 Fact Sheet 中的业绩模块：
+
+- 自定义区间净收益
+- YTD
+- 1 年收益
+- 3 年、5 年及 10 年年化收益（历史数据充足时）
+- 成立以来收益
+- 年度业绩表现
+- 初始投资 10,000 的增长曲线
+
+### 风险指标
+
+- 年化波动率
+- Sharpe Ratio
+- Maximum Drawdown
+- Beta
+- Tracking Error
+- Information Ratio
+
+风险测算区间可选 1Y、3Y、5Y、成立以来或自定义区间；选择 Sharpe Ratio 时可输入年化无风险利率。
+
+### 投资组合分析
+
+- 主要持仓
+- 持仓数量
+- 前十大持仓集中度
+- 行业配置
+- 国家 / 地区配置
+- 资产类别配置
+- 现金占比
+
+### 品牌、中英文与输出
+
+- 上传 `.jpg`、`.jpeg` 或 `.png` Logo
+- 保留 Logo 原始宽高比，并放置于报告首页右上角
+- 支持英文和简体中文报告
+- 标准金融术语采用固定翻译词典，保证术语一致性
+- 基金简介等叙述性文本可通过 OpenRouter 调用大语言模型辅助翻译
+- 计算结果、日期、基金标识、NAV、权重等数据不会由大语言模型重新生成
+- 输出固定版式 PDF
+- 输出可编辑 PowerPoint，文字、表格、图表、分隔线及 Logo 均可进一步调整
+
+## 快速开始
+
+### 1. 创建虚拟环境
+
+Windows：
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+macOS / Linux：
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. 启动本地 Web 应用
+
+```bash
+python -m streamlit run app.py
+```
+
+应用通常会在本地地址打开，例如：`http://localhost:8501`。
+
+Windows 用户在完成依赖安装后，也可双击 `run_app.bat` 启动。
+
+## 设计原则
+
+项目将原始数据与计算结果分离。例如，Excel 仅提供 NAV 历史数据，Python 再计算 1Y 收益、长期年化收益、波动率、回撤及其他风险指标，避免在多个位置重复维护同一组派生数据。
+
+`factsheet_builder.py` 统一调用各计算模块，网页预览、PDF 和 PowerPoint 均基于同一套已组装数据，避免不同输出之间出现两套金融计算逻辑。
+
+大语言模型仅用于指定的叙述性文本翻译，不参与基金业绩、风险指标、持仓权重或其他金融数值的计算。
+
+## 方法论与数据说明
+
+- 年化波动率和 Tracking Error 使用每年 252 个交易日
+- 多年收益根据实际日期进行复合年化
+- 历史数据不足时，5Y 或 10Y 指标显示 `N/A`，不会人为补值
+- Demo 将 NAV 视为合成的费后业绩序列
+- 真实生产环境应使用经基金管理人 / 管理机构确认的 total-return 或 adjusted NAV 数据
+- Benchmark 方法应与机构正式报告口径保持一致
+
+## 本地处理与合规说明
+
+本项目定位为本地 Streamlit 应用。上传的 Excel 文件仅用于本地临时读取，处理完成后临时文件会被删除。
+
+如用于真实资产管理机构，还需要进一步加入用户权限、审计日志、正式数据源、受控法律文本、版本管理和合规审核等控制。
+
+## 后续可扩展方向
+
+- 对接基金管理机构或内部 Data Warehouse，替代手工 Excel 上传
+- 增加 Share Class 和报告币种转换
+- 建立 Compliance-approved disclosure 模板库
+- 增加基于角色的权限控制和审计记录
+- 与官方月度业绩文件进行自动 reconciliation
+- 将企业模板配置与 Python 代码解耦
+- 支持定期批量生成月度 / 季度 Fact Sheet
+
+---
+
+# English Documentation
+
+## Overview
+
 A local Python-based Investor Relations reporting tool that converts structured Excel fund data into standardized fund fact sheets.
 
 The application calculates performance, risk and portfolio analytics, lets users choose which metrics to display, supports English and Chinese output, accepts a custom logo, and exports either a distribution-ready PDF or a fully editable PowerPoint.
 
 > All data in this repository is synthetic. The project is designed as a portfolio demonstration, not as investment advice or a production reporting system.
-
-## 中文简介
-
-这是一个基于 Python 开发的本地 Investor Relations（投资者关系）报告自动化工具，可将结构化的 Excel 基金数据自动转换为标准化的基金 Fact Sheet。
-
-该工具可自动完成基金业绩、风险指标及投资组合数据分析，并允许用户自主选择需要展示的指标和报告内容。同时支持中英文输出、自定义 Logo，以及生成可直接用于展示或分发的 PDF 和可进一步编辑的 PowerPoint 文件。
-
-> 本项目中的所有数据均为合成演示数据，仅用于个人作品集及技术展示，不构成任何投资建议，也不代表可直接用于实际业务的生产级报告系统。
-> 
-![Example fact sheet](docs/example_fact_sheet_page1.png)
 
 ## Why I built this
 
@@ -118,6 +281,7 @@ IR_Fund_Fact_Sheet_Generator/
 ├── app.py
 ├── validate_workbook.py
 ├── generate_demo_pdf.py
+├── generate_demo_outputs.py
 ├── requirements.txt
 ├── requirements-dev.txt
 ├── run_app.bat
@@ -127,7 +291,11 @@ IR_Fund_Fact_Sheet_Generator/
 ├── assets/
 │   └── demo_logo.png
 ├── examples/
-│   └── Example_Fund_Fact_Sheet.pdf
+│   ├── Example_Fund_Fact_Sheet.pdf
+│   ├── Example_Fund_Fact_Sheet_EN.pdf
+│   ├── Example_Fund_Fact_Sheet_EN.pptx
+│   ├── Example_Fund_Fact_Sheet_ZH.pdf
+│   └── Example_Fund_Fact_Sheet_ZH.pptx
 ├── docs/
 │   └── example_fact_sheet_page1.png
 ├── src/
@@ -138,8 +306,11 @@ IR_Fund_Fact_Sheet_Generator/
 │   ├── metric_catalog.py
 │   ├── factsheet_builder.py
 │   ├── branding.py
-│   └── pdf_exporter.py
+│   ├── localization.py
+│   ├── pdf_exporter.py
+│   └── pptx_exporter.py
 └── tests/
+    ├── conftest.py
     └── test_project.py
 ```
 
@@ -203,7 +374,7 @@ The project deliberately separates raw input from calculated output.
 
 For example, the Excel file supplies NAV history. Python calculates the 1Y return, annualized multi-year performance, volatility, drawdown and other metrics. This avoids manually maintaining the same derived figures in multiple places.
 
-The web app does not duplicate financial formulas. `factsheet_builder.py` calls the calculation modules, and both the web preview and PDF exporter use the same assembled data.
+The web app does not duplicate financial formulas. `factsheet_builder.py` calls the calculation modules, and the web preview, PDF exporter and PowerPoint exporter use the same assembled data.
 
 ## Important methodology notes
 
@@ -241,18 +412,11 @@ python -m pytest -q
 
 The tests cover workbook validation, selected metric assembly, insufficient-history handling and PDF generation.
 
-
-## License
-
-MIT. See `LICENSE`.
-
-
 ## PDF export
 
 The PDF uses a compact institutional layout inspired by the supplied iShares fact sheet structure. Page 1 uses an asymmetric two-column design with thin black section rules. The wider left column contains the fund description, growth chart, calendar-year performance and annualized performance. The narrower right column contains key facts, fees, selected risk characteristics and top holdings. Page 2 continues with a two-column glossary and portfolio allocations, followed by full-width important information.
 
 The uploaded company or fund logo is placed in the upper-right corner of the header. A ticker block appears in the upper-left when a ticker is available. The design intentionally follows the source document's information hierarchy while using synthetic content and generic branding.
-
 
 ## English / Chinese output
 
@@ -274,7 +438,7 @@ The application offers two download formats for the selected language:
 - **PDF** for a distribution-ready fixed-layout fact sheet.
 - **PowerPoint (.pptx)** for a fully editable A4 portrait report.
 
-The PowerPoint intentionally mirrors the approved iShares-style layout. Page 1 uses the same asymmetric two-column structure, black section rules, compact key facts, selected risk characteristics and top holdings. Page 2 contains glossary, allocation and important-information sections.
+The PowerPoint mirrors the same two-column information hierarchy used by the PDF. Page 1 contains the core fund description, performance content, key facts, selected risk characteristics and top holdings. Page 2 contains glossary, allocation and important-information sections.
 
 In the PowerPoint output, text boxes, section titles, separator lines, tables and charts are native PowerPoint objects. They can be moved, resized, recolored or rewritten after generation. The performance chart is a native editable chart rather than a flattened screenshot. The uploaded logo remains an image object that can be moved or resized.
 
@@ -300,3 +464,7 @@ localization.py
 ```
 
 If OpenRouter is enabled, only designated narrative strings are sent to the external API. Firms should enable that option only when their data-governance and compliance policies permit external model processing.
+
+## License
+
+MIT. See `LICENSE`.
